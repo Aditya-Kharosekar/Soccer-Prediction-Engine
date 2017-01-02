@@ -10,12 +10,12 @@ The csv file will be saved in the same directory as this python file
 """
 def downloadLatestCSV():
     #urllib.request.urlretrieve("http://www.football-data.co.uk/mmz4281/1617/E0.csv", "2016-17.csv")
-    print("Hi"); # This will be removed later
+    print("Hi")
 
 """
 The user has to enter the index of the team they want to select.
 This function takes that index and converts it to the appropriate team name.
-The team name will then by printed to provide confirmation of the team selected
+The team name will be used to provide confirmation of the team selected (this will happen in processTeamInput())
 """
 def numToNameMapping(num):
     if (num==1):
@@ -60,6 +60,10 @@ def numToNameMapping(num):
         return "West Ham"
 
 
+"""
+Prints out prompts and takes in user's team choices.
+Returns a list [homeTeamIndex, homeTeamName, awayTeamIndex, awayTeamName]
+"""
 def processTeamInput():
     df = pd.read_csv("2016-17.csv")
     names = df["HomeTeam"]
@@ -81,6 +85,7 @@ def processTeamInput():
         awayIndex = int(input())
         awayName = numToNameMapping(awayIndex)
         print("You have chosen " + awayName + " as the away team")
+        #Need to list down matchup here before asking for confirmation
         print("Calculate? (Y/N): ")
         answer = input()
         if (answer=="N" or answer=="n"):
@@ -90,9 +95,48 @@ def processTeamInput():
         else:
             calculate=True;
 
+    return [homeIndex, homeName, awayIndex, awayName] 
+
+#HT = home team as selected by user. AT = away team as selected by user
+#This function calculates how many points HT and AT have won so far
+def calculatePoints(teamInfo):
+    df = pd.read_csv("2016-17.csv")
+
+    #Calculating points won by HT at home
+    homeTeamAtHome_df = df.loc[df["HomeTeam"]==teamInfo[1]]
+    homeTeamHomeWins = homeTeamAtHome_df.loc[homeTeamAtHome_df["FTR"]=="H"]
+    homeTeamHomeDraws = homeTeamAtHome_df.loc[homeTeamAtHome_df["FTR"]=="D"]
+    homeTeamHomePoints = (len(homeTeamHomeWins.index)*3) + (len(homeTeamHomeDraws.index)*1)
+
+    #Calculating points won by HT away from home
+    homeTeamAway_df = df.loc[df["AwayTeam"]==teamInfo[1]]
+    homeTeamAwayWins = homeTeamAway_df.loc[homeTeamAway_df["FTR"]=="A"]
+    homeTeamAwayDraws = homeTeamAway_df.loc[homeTeamAway_df["FTR"]=="D"]
+    homeTeamAwayPoints = (len(homeTeamAwayWins.index)*3) + (len(homeTeamAwayDraws.index)*1)
+
+    homeTotalPoints = homeTeamHomePoints + homeTeamAwayPoints # HT total points
+
+    #Calculating points won by AT at home
+    awayTeamAtHome_df = df.loc[df["HomeTeam"]==teamInfo[3]]
+    awayTeamHomeWins = awayTeamAtHome_df.loc[awayTeamAtHome_df["FTR"]=="H"]
+    awayTeamHomeDraws = awayTeamAtHome_df.loc[awayTeamAtHome_df["FTR"]=="D"]
+    awayTeamHomePoints = (len(awayTeamHomeWins.index)*3) + (len(awayTeamHomeDraws.index)*1)
+
+    #Calculating points won by AT away form home
+    awayTeamAway_df = df.loc[df["AwayTeam"]==teamInfo[3]]
+    awayTeamAwayWins = awayTeamAway_df.loc[awayTeamAway_df["FTR"]=="A"]
+    awayTeamAwayDraws = awayTeamAway_df.loc[awayTeamAway_df["FTR"]=="D"]
+    awayTeamAwayPoints = (len(awayTeamAwayWins.index)*3) + (len(awayTeamAwayDraws.index)*1)
+
+    awayTotalPoints = awayTeamHomePoints + awayTeamAwayPoints # AT total points
+
+    return [homeTotalPoints, awayTotalPoints]
+
+
 def main():
     downloadLatestCSV()
-    processTeamInput()
+    teamInfo = processTeamInput() #teamInfo is a list. [homeTeamIndex, homeTeamName, awayTeamIndex, awayTeamName]
+    points = calculatePoints(teamInfo) #points[0] = points won by selected home team. points[1] = points won by selected away team
 
 
 if __name__=="__main__":
