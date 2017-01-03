@@ -98,46 +98,60 @@ def processTeamInput():
     return [homeIndex, homeName, awayIndex, awayName] 
 
 #HT = home team as selected by user. AT = away team as selected by user
-#This function calculates how many points HT and AT have won so far
+#This function calculates how many points HT and AT have so far
 def calculatePoints(teamInfo):
     df = pd.read_csv("2016-17.csv")
 
-    #Calculating points won by HT at home
-    homeTeamAtHome_df = df.loc[df["HomeTeam"]==teamInfo[1]]
-    homeTeamHomeWins = homeTeamAtHome_df.loc[homeTeamAtHome_df["FTR"]=="H"]
-    homeTeamHomeDraws = homeTeamAtHome_df.loc[homeTeamAtHome_df["FTR"]=="D"]
-    homeTeamHomePoints = (len(homeTeamHomeWins.index)*3) + (len(homeTeamHomeDraws.index)*1)
+    homeTeam = df[(df["HomeTeam"]==teamInfo[1]) | (df["AwayTeam"]==teamInfo[1])]
+    homeTeamWins = homeTeam[((homeTeam["FTR"]=="H") & (homeTeam["HomeTeam"]==teamInfo[1])) | ((homeTeam["FTR"]=="A") & (homeTeam["AwayTeam"]==teamInfo[1]))]
+    homeTeamDraws = homeTeam[(homeTeam["FTR"]=="D") & ((homeTeam["HomeTeam"]==teamInfo[1]) | (homeTeam["AwayTeam"]==teamInfo[1]))]
 
-    #Calculating points won by HT away from home
-    homeTeamAway_df = df.loc[df["AwayTeam"]==teamInfo[1]]
-    homeTeamAwayWins = homeTeamAway_df.loc[homeTeamAway_df["FTR"]=="A"]
-    homeTeamAwayDraws = homeTeamAway_df.loc[homeTeamAway_df["FTR"]=="D"]
-    homeTeamAwayPoints = (len(homeTeamAwayWins.index)*3) + (len(homeTeamAwayDraws.index)*1)
+    homeTotalPoints = (len(homeTeamWins.index)*3) + (len(homeTeamDraws.index)*1)
 
-    homeTotalPoints = homeTeamHomePoints + homeTeamAwayPoints # HT total points
+    awayTeam = df[(df["HomeTeam"]==teamInfo[3]) | (df["AwayTeam"]==teamInfo[3])]
+    awayTeamWins = awayTeam[((awayTeam["FTR"]=="H") & (awayTeam["HomeTeam"]==teamInfo[3])) | ((awayTeam["FTR"]=="A") & (awayTeam["AwayTeam"]==teamInfo[3]))]
+    awayTeamDraws = awayTeam[(awayTeam["FTR"]=="D") & ((awayTeam["HomeTeam"]==teamInfo[3]) | (awayTeam["AwayTeam"]==teamInfo[3]))]
 
-    #Calculating points won by AT at home
-    awayTeamAtHome_df = df.loc[df["HomeTeam"]==teamInfo[3]]
-    awayTeamHomeWins = awayTeamAtHome_df.loc[awayTeamAtHome_df["FTR"]=="H"]
-    awayTeamHomeDraws = awayTeamAtHome_df.loc[awayTeamAtHome_df["FTR"]=="D"]
-    awayTeamHomePoints = (len(awayTeamHomeWins.index)*3) + (len(awayTeamHomeDraws.index)*1)
-
-    #Calculating points won by AT away form home
-    awayTeamAway_df = df.loc[df["AwayTeam"]==teamInfo[3]]
-    awayTeamAwayWins = awayTeamAway_df.loc[awayTeamAway_df["FTR"]=="A"]
-    awayTeamAwayDraws = awayTeamAway_df.loc[awayTeamAway_df["FTR"]=="D"]
-    awayTeamAwayPoints = (len(awayTeamAwayWins.index)*3) + (len(awayTeamAwayDraws.index)*1)
-
-    awayTotalPoints = awayTeamHomePoints + awayTeamAwayPoints # AT total points
+    awayTotalPoints = (len(awayTeamWins.index)*3) + (len(awayTeamDraws.index)*1)
 
     return [homeTotalPoints, awayTotalPoints]
 
+
+#This function will calculate the average goals scored per game by HT and AT
+#Will return a list. First element - average goals scored per game by HT
+#Second element - average goals scored per game by AT
+def goalsScoredPerGame(teamInfo):
+    df = pd.read_csv("2016-17.csv")
+
+    goals1 = df[df["HomeTeam"]==teamInfo[1]]
+    goals2 = df[df["AwayTeam"]==teamInfo[1]]
+    homeAvg = (goals1["FTHG"].sum() + goals2["FTAG"].sum()) / (len(goals1.index) + len(goals2.index))
+
+    goals3 = df[df["HomeTeam"]==teamInfo[3]]
+    goals4 = df[df["AwayTeam"]==teamInfo[3]]
+    awayAvg = (goals3["FTHG"].sum() + goals4["FTAG"].sum()) / (len(goals3.index) + len(goals4.index))
+
+    return [round(homeAvg, 2), round(awayAvg, 2)] #Rounding off the averages to 2 decimal places
+
+def goalsConcededPerGame(teamInfo):
+    df = pd.read_csv("2016-17.csv")
+
+    goals1 = df[df["HomeTeam"]==teamInfo[1]]
+    goals2 = df[df["AwayTeam"]==teamInfo[1]]
+    homeAvg = (goals1["FTAG"].sum() + goals2["FTHG"].sum()) / (len(goals1.index) + len(goals2.index))
+
+    goals3 = df[df["HomeTeam"]==teamInfo[3]]
+    goals4 = df[df["AwayTeam"]==teamInfo[3]]
+    awayAvg = (goals3["FTAG"].sum() + goals4["FTHG"].sum()) / (len(goals3.index) + len(goals4.index))
+
+    return [round(homeAvg, 2), round(awayAvg, 2)] #Rounding off the averages to 2 decimal places
 
 def main():
     downloadLatestCSV()
     teamInfo = processTeamInput() #teamInfo is a list. [homeTeamIndex, homeTeamName, awayTeamIndex, awayTeamName]
     points = calculatePoints(teamInfo) #points[0] = points won by selected home team. points[1] = points won by selected away team
-
+    goalsScored = goalsScoredPerGame(teamInfo)
+    goalsConceded = goalsConcededPerGame(teamInfo)
 
 if __name__=="__main__":
     main()
