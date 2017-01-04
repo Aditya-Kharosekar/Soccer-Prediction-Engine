@@ -9,8 +9,8 @@ I will base my analysis on up-to-date results to maximize my prediction engine's
 The csv file will be saved in the same directory as this python file
 """
 def downloadLatestCSV():
-    #urllib.request.urlretrieve("http://www.football-data.co.uk/mmz4281/1617/E0.csv", "2016-17.csv")
-    print("Hi")
+    urllib.request.urlretrieve("http://www.football-data.co.uk/mmz4281/1617/E0.csv", "2016-17.csv")
+
 
 """
 The user has to enter the index of the team they want to select.
@@ -85,7 +85,8 @@ def processTeamInput():
         awayIndex = int(input())
         awayName = numToNameMapping(awayIndex)
         print("You have chosen " + awayName + " as the away team")
-        #Need to list down matchup here before asking for confirmation
+        print()
+        print(homeName + " vs. " + awayName)
         print("Calculate? (Y/N): ")
         answer = input()
         if (answer=="N" or answer=="n"):
@@ -133,6 +134,9 @@ def goalsScoredPerGame(teamInfo):
 
     return [round(homeAvg, 2), round(awayAvg, 2)] #Rounding off the averages to 2 decimal places
 
+#This function will calculate the average goals conceded per game by HT and AT
+#Will return a list. First element - average goals conceded per game by HT
+#Second element - average goals conceded per game by AT
 def goalsConcededPerGame(teamInfo):
     df = pd.read_csv("2016-17.csv")
 
@@ -146,12 +150,140 @@ def goalsConcededPerGame(teamInfo):
 
     return [round(homeAvg, 2), round(awayAvg, 2)] #Rounding off the averages to 2 decimal places
 
+
+#This function determines how accurate/'efficient with its shots each team is. For both HT and AT, it calculates the following - 
+# (goals scored at home + goals scored away) / (shots at home + shots away)
+# Returns the percentage
+def accuracyGoalsScored(teamInfo):
+    df = pd.read_csv("2016-17.csv")
+
+    accuracy1 = df[df["HomeTeam"]==teamInfo[1]]
+    accuracy2 = df[df["AwayTeam"]==teamInfo[1]]
+    homeAccuracy = (accuracy1["FTHG"].sum() + accuracy2["FTAG"].sum()) / (accuracy1["HS"].sum() + accuracy2["AS"].sum())
+    homeAccuracy = homeAccuracy*100; # I want the percentage
+
+    accuracy3 = df[df["HomeTeam"]==teamInfo[3]]
+    accuracy4 = df[df["AwayTeam"]==teamInfo[3]]
+    awayAccuracy = (accuracy3["FTHG"].sum() + accuracy4["FTAG"].sum()) / (accuracy3["HS"].sum() + accuracy4["AS"].sum())
+    awayAccuracy = awayAccuracy*100;
+
+    return [round(homeAccuracy, 2), round(awayAccuracy, 2)]
+
+#This function aims to quantify the quality of the shots that each team concedes. Calculates the following - 
+# (goals conceded at home + goals conceded away) / (shots given up at home + shots given up away)
+# Returns the percentage
+def accuracyGoalsConceded(teamInfo):
+    df = pd.read_csv("2016-17.csv")
+
+    accuracy1 = df[df["HomeTeam"]==teamInfo[1]]
+    accuracy2 = df[df["AwayTeam"]==teamInfo[1]]
+    homeAccuracy = (accuracy1["FTAG"].sum() + accuracy2["FTHG"].sum()) / (accuracy1["AS"].sum() + accuracy2["HS"].sum())
+    homeAccuracy = homeAccuracy*100; # I want the percentage
+
+    accuracy3 = df[df["HomeTeam"]==teamInfo[3]]
+    accuracy4 = df[df["AwayTeam"]==teamInfo[3]]
+    awayAccuracy = (accuracy3["FTAG"].sum() + accuracy4["FTHG"].sum()) / (accuracy3["AS"].sum() + accuracy4["HS"].sum())
+    awayAccuracy = awayAccuracy*100;
+
+    return [round(homeAccuracy, 2), round(awayAccuracy, 2)]
+
+#This function quantifies how good HT is at home games and how good AT is at away games
+#Returns a list. First element - % of available points that HT has won at home
+#Second element - % of available points that AT has won away from home
+def getHomeFieldAdvantage(teamInfo):
+    df = pd.read_csv("2016-17.csv")
+
+    home = df[df["HomeTeam"]==teamInfo[1]]
+    homeWins = home[home["FTR"]=="H"]
+    homeDraws = home[home["FTR"]=="D"]
+    homePoints = (len(homeWins.index)*3) + (len(homeDraws.index*1))
+    homePercentage = (homePoints / (len(home.index)*3))*100 #Multiplying by 100 because I want the percentage
+
+    away = df[df["AwayTeam"]==teamInfo[3]]
+    awayWins = away[away["FTR"]=="A"]
+    awayDraws = away[away["FTR"]=="D"]
+    awayPoints = (len(awayWins.index)*3) + (len(awayDraws.index)*1)
+    awayPercentage = (awayPoints / (len(away.index)*3))*100
+
+    return [round(homePercentage, 2), round(awayPercentage, 2)]
+
+
 def main():
     downloadLatestCSV()
-    teamInfo = processTeamInput() #teamInfo is a list. [homeTeamIndex, homeTeamName, awayTeamIndex, awayTeamName]
-    points = calculatePoints(teamInfo) #points[0] = points won by selected home team. points[1] = points won by selected away team
-    goalsScored = goalsScoredPerGame(teamInfo)
-    goalsConceded = goalsConcededPerGame(teamInfo)
+    cont = "Y"
+    while (cont=="Y" or cont=="y"):
+
+        teamInfo = processTeamInput() #teamInfo is a list. [homeTeamIndex, homeTeamName, awayTeamIndex, awayTeamName]
+
+        points = calculatePoints(teamInfo) #points[0] = points won by selected home team. points[1] = points won by selected away team
+        goalsScored = goalsScoredPerGame(teamInfo)
+        goalsConceded = goalsConcededPerGame(teamInfo)
+        scoringAccuracy = accuracyGoalsScored(teamInfo)
+        defenseEfficiency = accuracyGoalsConceded(teamInfo)
+        homeFieldAdvantage = getHomeFieldAdvantage(teamInfo)
+
+        homeScore = 0
+        awayScore = 0
+
+        #Points
+        if (points[0] > points[1]):
+            homeScore +=200
+            awayScore += (points[1]/points[0])*200
+        else:
+            awayScore+=200
+            homeScore = (points[0]/points[1])*200
+
+        #Goals scored/game
+        if (goalsScored[0] > goalsScored[1]):
+            homeScore+=150
+            awayScore+=(goalsScored[1]/goalsScored[0])*150
+        else:
+            homeScore+=(goalsScored[0]/goalsScored[1])*150
+            awayScore+=150
+
+        #Goals conceded/game
+        if (goalsConceded[0] > goalsConceded[1]):
+            awayScore+=150
+            homeScore+=150/(goalsConceded[0]/goalsConceded[1])
+        else:
+            homeScore+=150
+            awayScore+=150/(goalsConceded[1]/goalsConceded[0])
+
+        #Goal-scoring efficiency
+        if (scoringAccuracy[0] > scoringAccuracy[1]):
+            homeScore+=150
+            awayScore+=(scoringAccuracy[1]/scoringAccuracy[0])*150
+        else:
+            homeScore+=(scoringAccuracy[0]/scoringAccuracy[1])*150
+            awayScore+=150
+
+        #Defending efficiency
+        if (defenseEfficiency[0] > defenseEfficiency[1]):
+            awayScore+=150
+            homeScore+=150/(defenseEfficiency[0]/defenseEfficiency[1])
+        else:
+            homeScore+=150
+            awayScore+=150/(defenseEfficiency[1]/defenseEfficiency[0])
+
+        #Home field advantage
+        if (homeFieldAdvantage[0] > homeFieldAdvantage[1]):
+            homeScore+=200
+            awayScore+=(homeFieldAdvantage[1]/homeFieldAdvantage[0])*200
+        else:
+            homeScore+=(homeFieldAdvantage[0]/homeFieldAdvantage[1])*200
+            awayScore+=200
+
+        x = 100/(homeScore+awayScore)
+        homeWinPerc = homeScore*x;
+        awayWinPerc = awayScore*x
+
+        print(teamInfo[1] + " has a " + str(round(homeWinPerc, 2)) + "% chance of winning")
+        print(teamInfo[3] + " has a " + str(round(awayWinPerc, 2)) + "% chance of winning")
+        if (abs(homeWinPerc-awayWinPerc) < 6):
+            print("This is a close game. I predict this game will be a draw")
+
+        print("Continue?(Y/N): ")
+        cont = input()
 
 if __name__=="__main__":
     main()
